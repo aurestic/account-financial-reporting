@@ -28,6 +28,7 @@ from openerp.osv import osv
 from openerp.tools.translate import _
 from openerp.addons.account.report.common_report_header \
     import common_report_header
+from collections import OrderedDict
 
 _logger = logging.getLogger('financial.reports.webkit')
 
@@ -130,9 +131,10 @@ class CommonReportHeaderWebkit(common_report_header):
         def recursive_sort_by_code(accounts, parent):
             sorted_accounts = []
             # add all accounts with same parent
-            level_accounts = [account for account in accounts
-                              if account['parent_id']
-                              and account['parent_id'][0] == parent['id']]
+            level_accounts = [
+                account for account in accounts
+                if account['parent_id'] and
+                account['parent_id'][0] == parent['id']]
             # add consolidation children of parent, as they are logically on
             # the same level
             if parent.get('child_consol_ids'):
@@ -194,9 +196,20 @@ class CommonReportHeaderWebkit(common_report_header):
         acc_obj = self.pool.get('account.account')
         for account_id in account_ids:
             accounts.append(account_id)
-            accounts += acc_obj._get_children_and_consol(
+            children_acc_ids = acc_obj._get_children_and_consol(
                 self.cursor, self.uid, account_id, context=context)
-        res_ids = list(set(accounts))
+            if context.get('account_level'):
+                domain = [('level', '<=', context['account_level']),
+                          ('id', 'in', children_acc_ids)]
+                accounts += self.pool['account.account'].search(
+                    self.cursor, self.uid, domain)
+            else:
+                accounts += children_acc_ids
+        # remove duplicate account IDs in accounts
+        # We don't use list(set(accounts)) to keep the order
+        # cf http://stackoverflow.com/questions/7961363/
+        # removing-duplicates-in-lists
+        res_ids = list(OrderedDict.fromkeys(accounts))
         res_ids = self.sort_accounts_with_structure(
             account_ids, res_ids, context=context)
 

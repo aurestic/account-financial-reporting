@@ -1,25 +1,6 @@
-# -*- encoding: utf-8 -*-
-##############################################################################
-#
-#    OpenERP, Open Source Management Solution
-#
-#    Copyright (c) 2013 Noviat nv/sa (www.noviat.com). All rights reserved.
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Affero General Public License as
-#    published by the Free Software Foundation, either version 3 of the
-#    License, or (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU Affero General Public License for more details.
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-##############################################################################
-
+# -*- coding: utf-8 -*-
+# Copyright 2009-2016 Noviat
+# License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 import xlwt
 from datetime import datetime
 from openerp.addons.report_xls.report_xls import report_xls
@@ -260,8 +241,9 @@ class open_invoices_xls(report_xls):
                                partner_name):
         if regroupmode == "regroup":
             c_specs = [('acc_title', self.nbr_columns, 0, 'text',
-                        ' - '.join([account.code, account.name, partner_name
-                                    or _('No partner')])), ]
+                        ' - '.join([account.code,
+                                    account.name,
+                                    partner_name or _('No partner')])), ]
         else:
             c_specs = [
                 ('acc_title', self.nbr_columns, 0, 'text', ' - '.
@@ -332,10 +314,10 @@ class open_invoices_xls(report_xls):
         else:
             c_specs += [('datedue', 1, 0, 'text', None)]
         c_specs += [
-            ('debit', 1, 0, 'number', line.get('debit')
-             or 0.0, None, style_line_decimal),
-            ('credit', 1, 0, 'number', line.get('credit')
-             or 0.0, None, style_line_decimal),
+            ('debit', 1, 0, 'number', line.get('debit') or 0.0, None,
+             style_line_decimal),
+            ('credit', 1, 0, 'number', line.get('credit') or 0.0, None,
+             style_line_decimal),
         ]
 
         # determine the formula of the cumulated balance
@@ -355,10 +337,11 @@ class open_invoices_xls(report_xls):
                      cumul_balance, style_line_decimal)]
 
         if _p.amount_currency(data):
-            if account.currency_id:
+            if line.get('currency_code'):
                 c_specs += [
-                    ('curramount', 1, 0, 'number', line.get('amount_currency')
-                     or 0.0, None, style_line_decimal),
+                    ('curramount', 1, 0, 'number',
+                     line.get('amount_currency') or 0.0, None,
+                     style_line_decimal),
                     ('currcode', 1, 0, 'text', line[
                      'currency_code'], None, style_line_right),
                 ]
@@ -428,18 +411,18 @@ class open_invoices_xls(report_xls):
         else:
             c_specs += [('datedue', 1, 0, 'text', None)]
         c_specs += [
-            ('debit', 1, 0, 'number', line.get('debit')
-             or 0.0, None, style_line_decimal),
-            ('credit', 1, 0, 'number', line.get('credit')
-             or 0.0, None, style_line_decimal),
+            ('debit', 1, 0, 'number', line.get('debit') or 0.0, None,
+             style_line_decimal),
+            ('credit', 1, 0, 'number', line.get('credit') or 0.0, None,
+             style_line_decimal),
             ('cumul', 1, 0, 'number', None, cumul_balance, style_line_decimal),
         ]
         if account.currency_id:
             c_specs += [
-                ('curramount', 1, 0, 'number', line.get('amount_currency')
-                 or 0.0, None, style_line_decimal),
-                ('currcode', 1, 0, 'text', line.get('currency_code')
-                 or '', None, style_line_right),
+                ('curramount', 1, 0, 'number',
+                 line.get('amount_currency') or 0.0, None, style_line_decimal),
+                ('currcode', 1, 0, 'text',
+                 line.get('currency_code') or '', None, style_line_right),
             ]
         else:
             c_specs += [
@@ -821,6 +804,7 @@ class open_invoices_xls(report_xls):
                 row_pos = self.print_ledger_lines(
                     row_pos, acc, _xs, xlwt, _p, data)
             row_pos += 1
+
 
 open_invoices_xls('report.account.account_report_open_invoices_xls',
                   'account.account', parser=PartnersOpenInvoicesWebkit)

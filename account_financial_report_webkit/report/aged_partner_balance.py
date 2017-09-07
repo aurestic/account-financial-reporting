@@ -21,7 +21,7 @@
 from __future__ import division
 from datetime import datetime
 
-from openerp import pooler
+from openerp.modules.registry import RegistryManager
 from openerp.tools import DEFAULT_SERVER_DATE_FORMAT
 from openerp.tools.translate import _
 from .open_invoices import PartnersOpenInvoicesWebkit
@@ -43,16 +43,18 @@ def make_ranges(top, offset):
     ranges.append((top, 100000000000))
     return ranges
 
+
 # list of overdue ranges
 RANGES = make_ranges(120, 30)
 
 
 def make_ranges_titles():
     """Generates title to be used by mako"""
-    titles = [_('Due')]
+    titles = [_('Not Due')]
     titles += [_(u'Overdue ≤ %s d.') % x[1] for x in RANGES[1:-1]]
-    titles.append(_('Older'))
+    titles.append(_('Overdue > %s d.') % RANGES[-1][0])
     return titles
+
 
 # list of overdue ranges title
 RANGES_TITLES = make_ranges_titles()
@@ -72,7 +74,7 @@ class AccountAgedTrialBalanceWebkit(PartnersOpenInvoicesWebkit):
            refer to :class:`openerp.report.report_sxw.rml_parse`"""
         super(AccountAgedTrialBalanceWebkit, self).__init__(cursor, uid, name,
                                                             context=context)
-        self.pool = pooler.get_pool(self.cr.dbname)
+        self.pool = RegistryManager.get(self.cr.dbname)
         self.cursor = self.cr
         company = self.pool.get('res.users').browse(self.cr, uid, uid,
                                                     context=context).company_id
@@ -285,10 +287,14 @@ class AccountAgedTrialBalanceWebkit(PartnersOpenInvoicesWebkit):
 
         :returns: delta in days
         """
-        sale_lines = [x for x in ledger_lines if x['jtype'] in REC_PAY_TYPE
-                      and line['rec_id'] == x['rec_id']]
-        refund_lines = [x for x in ledger_lines if x['jtype'] in REFUND_TYPE
-                        and line['rec_id'] == x['rec_id']]
+        sale_lines = [
+            x for x in ledger_lines if x['jtype'] in REC_PAY_TYPE and
+            line['rec_id'] == x['rec_id']
+        ]
+        refund_lines = [
+            x for x in ledger_lines if x['jtype'] in REFUND_TYPE and
+            line['rec_id'] == x['rec_id']
+        ]
         if len(sale_lines) == 1:
             reference_line = sale_lines[0]
         elif len(refund_lines) == 1:
@@ -415,6 +421,7 @@ class AccountAgedTrialBalanceWebkit(PartnersOpenInvoicesWebkit):
         self.cr.execute(sql, (l_ids,))
         res = self.cr.fetchall()
         return dict((x[0], x[1]) for x in res)
+
 
 HeaderFooterTextWebKitParser(
     'report.account.account_aged_trial_balance_webkit',

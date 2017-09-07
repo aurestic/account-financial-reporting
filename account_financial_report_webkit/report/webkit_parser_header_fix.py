@@ -27,6 +27,9 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #
 ##############################################################################
+from mako.template import Template
+from mako.lookup import TemplateLookup
+
 import os
 import subprocess
 import tempfile
@@ -37,7 +40,7 @@ from functools import partial
 from mako import exceptions
 from openerp.osv.orm import except_orm
 from openerp.tools.translate import _
-from openerp import pooler
+from openerp.modules.registry import RegistryManager
 from openerp import tools
 from openerp.addons.report_webkit import webkit_report
 from openerp.addons.report_webkit.report_helper import WebKitHelper
@@ -75,8 +78,6 @@ _logger = logging.getLogger('financial.reports.webkit')
 
 # redefine mako_template as this is overriden by jinja since saas-1
 # from openerp.addons.report_webkit.webkit_report import mako_template
-from mako.template import Template
-from mako.lookup import TemplateLookup
 
 
 def mako_template(text):
@@ -198,7 +199,7 @@ class HeaderFooterTextWebKitParser(webkit_report.WebKitParser):
                                       self.name2,
                                       context=context)
 
-        self.pool = pooler.get_pool(cursor.dbname)
+        self.pool = RegistryManager.get(cursor.dbname)
         objs = self.getObjects(cursor, uid, ids, context)
         parser_instance.set_context(objs, data, ids, report_xml.report_type)
 
