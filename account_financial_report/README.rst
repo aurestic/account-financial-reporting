@@ -13,6 +13,15 @@ Accounting / Reporting / OCA Reports.
 - Trial Balance
 - Open Items
 - Aged Partner Balance
+- VAT Report
+
+Currently General ledger, Trial Balance and Open Items are fully compatible with a foreign
+currency set up in account in order to display balances. Moreover, any foreign
+currency used in account move lines is properly shown.
+
+In case that in an account has not been configured a second currency foreign
+currency balances are not available.
+
 
 .. image:: https://odoo-community.org/website/image/ir.attachment/5784_f2813bd/datas
    :alt: Try me on Runbot
@@ -52,6 +61,7 @@ Contributors
 * Julien Coux <julien.coux@camptocamp.com>
 * Akim Juillerat <akim.juillerat@camptocamp.com>
 * Alexis de Lattre <alexis@via.ecp.fr>
+* Mihai Fekete <feketemihai@gmail.com>
 
 Much of the work in this module was done at a sprint in Sorrento, Italy in
 April 2016.

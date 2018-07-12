@@ -1,15 +1,16 @@
-# -*- coding: utf-8 -*-
 # © 2016 Lorenzo Battistini - Agile Business Group
 # © 2016 Giovanni Capalbo <giovanni@therp.nl>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
 from openerp.fields import Date
-from openerp.tests.common import TransactionCase
+from openerp.tests.common import HttpCase
 from datetime import datetime
 from dateutil.rrule import MONTHLY
 
 
-class TestAccountTaxBalance(TransactionCase):
+class TestAccountTaxBalance(HttpCase):
+    at_install = False
+    post_install = False
 
     def setUp(self):
         super(TestAccountTaxBalance, self).setUp()

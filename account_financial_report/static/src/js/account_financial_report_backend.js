@@ -4,12 +4,8 @@ odoo.define('account_financial_report.account_financial_report_backend', functio
 var core = require('web.core');
 var Widget = require('web.Widget');
 var ControlPanelMixin = require('web.ControlPanelMixin');
-var session = require('web.session');
 var ReportWidget = require('account_financial_report.account_financial_report_widget');
-var framework = require('web.framework');
-var crash_manager = require('web.crash_manager');
 
-var QWeb = core.qweb;
 
 var report_backend = Widget.extend(ControlPanelMixin, {
     // Stores all the parameters of the action.
@@ -66,20 +62,19 @@ var report_backend = Widget.extend(ControlPanelMixin, {
     },
     // Updates the control panel and render the elements that have yet to be rendered
     update_cp: function() {
-        if (!this.$buttons) {
-
+        if (this.$buttons) {
+            var status = {
+                breadcrumbs: this.actionManager.get_breadcrumbs(),
+                cp_content: {$buttons: this.$buttons},
+            };
+            return this.update_control_panel(status);
         }
-        var status = {
-            breadcrumbs: this.actionManager.get_breadcrumbs(),
-            cp_content: {$buttons: this.$buttons},
-        };
-        return this.update_control_panel(status);
     },
     do_show: function() {
         this._super();
         this.update_cp();
     },
-    print: function(e) {
+    print: function() {
         var self = this;
         this._rpc({
             model: this.given_context.model,
@@ -90,7 +85,7 @@ var report_backend = Widget.extend(ControlPanelMixin, {
             self.do_action(result);
         });
     },
-    export: function(e) {
+    export: function() {
         var self = this;
         this._rpc({
             model: this.given_context.model,

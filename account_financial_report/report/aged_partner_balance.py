@@ -201,7 +201,7 @@ class AgedPartnerBalanceReportCompute(models.TransientModel):
             rcontext['o'] = report
             result['html'] = self.env.ref(
                 'account_financial_report.report_aged_partner_balance').render(
-                rcontext)
+                    rcontext)
         return result
 
     @api.model
@@ -238,7 +238,7 @@ class AgedPartnerBalanceReportCompute(models.TransientModel):
             self._inject_move_line_values(only_empty_partner_line=True)
         self._compute_accounts_cumul()
         # Refresh cache because all data are computed with SQL requests
-        self.refresh()
+        self.invalidate_cache()
 
     def _inject_account_values(self):
         """Inject report values for report_aged_partner_balance_account"""
@@ -450,6 +450,7 @@ INSERT INTO
         report_partner_id,
         create_uid,
         create_date,
+        move_line_id,
         date,
         date_due,
         entry,
@@ -469,6 +470,7 @@ SELECT
     rp.id AS report_partner_id,
     %s AS create_uid,
     NOW() AS create_date,
+    rlo.move_line_id,
     rlo.date,
     rlo.date_due,
     rlo.entry,
