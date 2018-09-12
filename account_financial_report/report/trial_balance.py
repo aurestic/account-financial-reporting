@@ -17,6 +17,7 @@ class TrialBalanceReport(models.TransientModel):
     """
 
     _name = 'report_trial_balance'
+    _inherit = 'account_financial_report_abstract'
 
     # Filters fields, used for data computation
     date_from = fields.Date()
@@ -28,6 +29,7 @@ class TrialBalanceReport(models.TransientModel):
     company_id = fields.Many2one(comodel_name='res.company')
     filter_account_ids = fields.Many2many(comodel_name='account.account')
     filter_partner_ids = fields.Many2many(comodel_name='res.partner')
+    filter_journal_ids = fields.Many2many(comodel_name='account.journal')
     show_partner_details = fields.Boolean()
     hierarchy_on = fields.Selection([('computed', 'Computed Accounts'),
                                      ('relation', 'Child Accounts')],
@@ -50,6 +52,7 @@ class TrialBalanceReport(models.TransientModel):
 
 class TrialBalanceReportAccount(models.TransientModel):
     _name = 'report_trial_balance_account'
+    _inherit = 'account_financial_report_abstract'
     _order = 'sequence, code ASC, name'
 
     report_id = fields.Many2one(
@@ -103,6 +106,7 @@ class TrialBalanceReportAccount(models.TransientModel):
 
 class TrialBalanceReportPartner(models.TransientModel):
     _name = 'report_trial_balance_partner'
+    _inherit = 'account_financial_report_abstract'
 
     report_account_id = fields.Many2one(
         comodel_name='report_trial_balance_account',
@@ -187,6 +191,7 @@ class TrialBalanceReportCompute(models.TransientModel):
             'company_id': self.company_id.id,
             'filter_account_ids': [(6, 0, account_ids.ids)],
             'filter_partner_ids': [(6, 0, self.filter_partner_ids.ids)],
+            'filter_journal_ids': [(6, 0, self.filter_journal_ids.ids)],
             'fy_start_date': self.fy_start_date,
         }
 
@@ -460,13 +465,13 @@ WHERE report_trial_balance_account.account_group_id = aggr.account_group_id
 WITH RECURSIVE accgroup AS
 (SELECT
     accgroup.id,
-    coalesce(sum(ra.initial_balance),0) as initial_balance,
-    coalesce(sum(ra.initial_balance_foreign_currency),0)
+    sum(coalesce(ra.initial_balance, 0)) as initial_balance,
+    sum(coalesce(ra.initial_balance_foreign_currency, 0))
         as initial_balance_foreign_currency,
-    coalesce(sum(ra.debit),0) as debit,
-    coalesce(sum(ra.credit),0) as credit,
-    coalesce(sum(ra.final_balance),0) as final_balance,
-    coalesce(sum(ra.final_balance_foreign_currency),0)
+    sum(coalesce(ra.debit, 0)) as debit,
+    sum(coalesce(ra.credit, 0)) as credit,
+    sum(coalesce(ra.final_balance, 0)) as final_balance,
+    sum(coalesce(ra.final_balance_foreign_currency, 0))
         as final_balance_foreign_currency
  FROM
     account_group accgroup
