@@ -39,23 +39,50 @@ class TestGeneralLedger(a_t_f_c.AbstractTestForeignCurrency):
         }
 
     def _getAdditionalFiltersToBeTested(self):
-        return [
+
+        additional_filters = [
             {'only_posted_moves': True},
-            {'hide_account_balance_at_0': True},
+            {'hide_account_at_0': True},
             {'centralize': True},
-            {'only_posted_moves': True, 'hide_account_balance_at_0': True},
+            {'only_posted_moves': True, 'hide_account_at_0': True},
             {'only_posted_moves': True, 'centralize': True},
-            {'hide_account_balance_at_0': True, 'centralize': True},
+            {'hide_account_at_0': True, 'centralize': True},
             {
                 'only_posted_moves': True,
-                'hide_account_balance_at_0': True,
+                'hide_account_at_0': True,
                 'centralize': True
             },
         ]
+        # Add `show_analytic_tags` filter on each cases
+        additional_filters_with_show_tags = []
+        for additional_filter in additional_filters:
+            additional_filter['show_analytic_tags'] = True
+            additional_filters_with_show_tags.append(
+                additional_filter
+            )
+        additional_filters += additional_filters_with_show_tags
+        # Add `filter_analytic_tag_ids` filter on each cases
+        analytic_tag = self.env['account.analytic.tag'].create({
+            'name': 'TEST tag'
+        })
+        # Define all move lines on this tag
+        # (this test just check with the all filters, all works technically)
+        move_lines = self.env['account.move.line'].search([])
+        move_lines.write({
+            'analytic_tag_ids': [(6, False, analytic_tag.ids)],
+        })
+        additional_filters_with_filter_tags = []
+        for additional_filter in additional_filters:
+            additional_filter['filter_analytic_tag_ids'] = [
+                (6, False, analytic_tag.ids)
+            ]
+            additional_filters_with_filter_tags.append(
+                additional_filter
+            )
+        additional_filters += additional_filters_with_filter_tags
+        return additional_filters
 
 
-@common.at_install(False)
-@common.post_install(True)
 class TestGeneralLedgerReport(common.TransactionCase):
 
     def setUp(self):
@@ -122,7 +149,7 @@ class TestGeneralLedgerReport(common.TransactionCase):
             'date_from': self.fy_date_start,
             'date_to': self.fy_date_end,
             'only_posted_moves': True,
-            'hide_account_balance_at_0': False,
+            'hide_account_at_0': False,
             'company_id': company.id,
             'fy_start_date': self.fy_date_start,
             })
@@ -344,10 +371,10 @@ class TestGeneralLedgerReport(common.TransactionCase):
 
         # Check the initial and final balance
         self.assertEqual(lines['unaffected'].initial_debit, 0)
-        self.assertEqual(lines['unaffected'].initial_credit, 0)
+        self.assertEqual(lines['unaffected'].initial_credit, 1000)
         self.assertEqual(lines['unaffected'].initial_balance, -1000)
-        self.assertEqual(lines['unaffected'].final_debit, -0)
-        self.assertEqual(lines['unaffected'].final_credit, 0)
+        self.assertEqual(lines['unaffected'].final_debit, 0)
+        self.assertEqual(lines['unaffected'].final_credit, 1000)
         self.assertEqual(lines['unaffected'].final_balance, -1000)
 
         # Add reversale move of the initial move the first day of fiscal year
@@ -369,11 +396,11 @@ class TestGeneralLedgerReport(common.TransactionCase):
 
         # Check the initial and final balance
         self.assertEqual(lines['unaffected'].initial_debit, 0)
-        self.assertEqual(lines['unaffected'].initial_credit, 0)
+        self.assertEqual(lines['unaffected'].initial_credit, 1000)
         self.assertEqual(lines['unaffected'].initial_balance, -1000)
-        self.assertEqual(lines['unaffected'].final_debit, 0)
-        self.assertEqual(lines['unaffected'].final_credit, 0)
-        self.assertEqual(lines['unaffected'].final_balance, -1000)
+        self.assertEqual(lines['unaffected'].final_debit, 1000)
+        self.assertEqual(lines['unaffected'].final_credit, 1000)
+        self.assertEqual(lines['unaffected'].final_balance, 0)
 
         # Add another move at the end day of fiscal year
         # to check that it correctly used on report
@@ -393,11 +420,11 @@ class TestGeneralLedgerReport(common.TransactionCase):
 
         # Check the initial and final balance
         self.assertEqual(lines['unaffected'].initial_debit, 0)
-        self.assertEqual(lines['unaffected'].initial_credit, 0)
+        self.assertEqual(lines['unaffected'].initial_credit, 1000)
         self.assertEqual(lines['unaffected'].initial_balance, -1000)
-        self.assertEqual(lines['unaffected'].final_debit, 0)
-        self.assertEqual(lines['unaffected'].final_credit, 0)
-        self.assertEqual(lines['unaffected'].final_balance, -4000)
+        self.assertEqual(lines['unaffected'].final_debit, 1000)
+        self.assertEqual(lines['unaffected'].final_credit, 4000)
+        self.assertEqual(lines['unaffected'].final_balance, -3000)
 
     def test_04_unaffected_account_balance_2_years(self):
         # Generate the general ledger line
@@ -427,10 +454,10 @@ class TestGeneralLedgerReport(common.TransactionCase):
         self.assertEqual(len(lines['unaffected']), 1)
 
         # Check the initial and final balance
-        self.assertEqual(lines['unaffected'].initial_debit, 0)
+        self.assertEqual(lines['unaffected'].initial_debit, 1000)
         self.assertEqual(lines['unaffected'].initial_credit, 0)
         self.assertEqual(lines['unaffected'].initial_balance, 1000)
-        self.assertEqual(lines['unaffected'].final_debit, 0)
+        self.assertEqual(lines['unaffected'].final_debit, 1000)
         self.assertEqual(lines['unaffected'].final_credit, 0)
         self.assertEqual(lines['unaffected'].final_balance, 1000)
 
@@ -460,9 +487,9 @@ class TestGeneralLedgerReport(common.TransactionCase):
         self.assertEqual(len(lines['unaffected']), 1)
 
         # Check the initial and final balance
-        self.assertEqual(lines['unaffected'].initial_debit, 0)
+        self.assertEqual(lines['unaffected'].initial_debit, 500)
         self.assertEqual(lines['unaffected'].initial_credit, 0)
         self.assertEqual(lines['unaffected'].initial_balance, 500)
-        self.assertEqual(lines['unaffected'].final_debit, 0)
+        self.assertEqual(lines['unaffected'].final_debit, 500)
         self.assertEqual(lines['unaffected'].final_credit, 0)
         self.assertEqual(lines['unaffected'].final_balance, 500)

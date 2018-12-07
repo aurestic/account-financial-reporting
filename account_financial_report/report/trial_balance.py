@@ -24,19 +24,29 @@ class TrialBalanceReport(models.TransientModel):
     date_to = fields.Date()
     fy_start_date = fields.Date()
     only_posted_moves = fields.Boolean()
-    hide_account_balance_at_0 = fields.Boolean()
+    hide_account_at_0 = fields.Boolean()
     foreign_currency = fields.Boolean()
     company_id = fields.Many2one(comodel_name='res.company')
     filter_account_ids = fields.Many2many(comodel_name='account.account')
     filter_partner_ids = fields.Many2many(comodel_name='res.partner')
     filter_journal_ids = fields.Many2many(comodel_name='account.journal')
     show_partner_details = fields.Boolean()
-    hierarchy_on = fields.Selection([('computed', 'Computed Accounts'),
-                                     ('relation', 'Child Accounts')],
-                                    string='Hierarchy On',
-                                    required=True,
-                                    default='computed')
-
+    hierarchy_on = fields.Selection(
+        [('computed', 'Computed Accounts'),
+         ('relation', 'Child Accounts'),
+         ('none', 'No hierarchy')],
+        string='Hierarchy On',
+        required=True,
+        default='computed',
+        help="""Computed Accounts: Use when the account group have codes
+        that represent prefixes of the actual accounts.\n
+        Child Accounts: Use when your account groups are hierarchical.\n
+        No hierarchy: Use to display just the accounts, without any grouping.
+        """,
+    )
+    limit_hierarchy_level = fields.Boolean('Limit hierarchy levels')
+    show_hierarchy_level = fields.Integer('Hierarchy Levels to display',
+                                          default=1)
     # General Ledger Report Data fields,
     # used as base for compute the data reports
     general_ledger_id = fields.Many2one(
@@ -60,10 +70,10 @@ class TrialBalanceReportAccount(models.TransientModel):
         ondelete='cascade',
         index=True
     )
-
+    hide_line = fields.Boolean(compute='_compute_hide_line')
     # Data fields, used to keep link with real object
-    sequence = fields.Integer(index=True, default=0)
-    level = fields.Integer(index=True, default=0)
+    sequence = fields.Integer(index=True, default=1)
+    level = fields.Integer(index=True, default=1)
 
     # Data fields, used to keep link with real object
     account_id = fields.Many2one(
@@ -94,6 +104,7 @@ class TrialBalanceReportAccount(models.TransientModel):
     initial_balance_foreign_currency = fields.Float(digits=(16, 2))
     debit = fields.Float(digits=(16, 2))
     credit = fields.Float(digits=(16, 2))
+    period_balance = fields.Float(digits=(16, 2))
     final_balance = fields.Float(digits=(16, 2))
     final_balance_foreign_currency = fields.Float(digits=(16, 2))
 
@@ -102,6 +113,21 @@ class TrialBalanceReportAccount(models.TransientModel):
         comodel_name='report_trial_balance_partner',
         inverse_name='report_account_id'
     )
+
+    @api.multi
+    def _compute_hide_line(self):
+        for rec in self:
+            report = rec.report_id
+            rec.hide_line = False
+            if report.hide_account_at_0 and (
+                    not rec.initial_balance and
+                    not rec.final_balance and
+                    not rec.debit and
+                    not rec.credit):
+                rec.hide_line = True
+            elif report.limit_hierarchy_level and \
+                    rec.level > report.show_hierarchy_level:
+                rec.hide_line = True
 
 
 class TrialBalanceReportPartner(models.TransientModel):
@@ -128,6 +154,7 @@ class TrialBalanceReportPartner(models.TransientModel):
     initial_balance_foreign_currency = fields.Float(digits=(16, 2))
     debit = fields.Float(digits=(16, 2))
     credit = fields.Float(digits=(16, 2))
+    period_balance = fields.Float(digits=(16, 2))
     final_balance = fields.Float(digits=(16, 2))
     final_balance_foreign_currency = fields.Float(digits=(16, 2))
 
@@ -186,7 +213,7 @@ class TrialBalanceReportCompute(models.TransientModel):
             'date_from': self.date_from,
             'date_to': self.date_to,
             'only_posted_moves': self.only_posted_moves,
-            'hide_account_balance_at_0': self.hide_account_balance_at_0,
+            'hide_account_at_0': self.hide_account_at_0,
             'foreign_currency': self.foreign_currency,
             'company_id': self.company_id.id,
             'filter_account_ids': [(6, 0, account_ids.ids)],
@@ -219,15 +246,16 @@ class TrialBalanceReportCompute(models.TransientModel):
         if self.show_partner_details:
             self._inject_partner_values()
         if not self.filter_account_ids:
-            self._inject_account_group_values()
-            if self.hierarchy_on == 'computed':
-                self._update_account_group_computed_values()
-            else:
-                self._update_account_group_child_values()
-            self._update_account_sequence()
-            self._add_account_group_account_values()
+            if self.hierarchy_on != 'none':
+                self._inject_account_group_values()
+                if self.hierarchy_on == 'computed':
+                    self._update_account_group_computed_values()
+                else:
+                    self._update_account_group_child_values()
+                self._update_account_sequence()
+                self._add_account_group_account_values()
         self.refresh()
-        if not self.filter_account_ids:
+        if not self.filter_account_ids and self.hierarchy_on != 'none':
             self._compute_group_accounts()
         else:
             for line in self.account_ids:
@@ -249,6 +277,7 @@ INSERT INTO
     initial_balance,
     debit,
     credit,
+    period_balance,
     final_balance,
     currency_id,
     initial_balance_foreign_currency,
@@ -265,6 +294,7 @@ SELECT
     coalesce(rag.initial_balance, 0) AS initial_balance,
     coalesce(rag.final_debit - rag.initial_debit, 0) AS debit,
     coalesce(rag.final_credit - rag.initial_credit, 0) AS credit,
+    coalesce(rag.final_balance - rag.initial_balance, 0) AS period_balance,
     coalesce(rag.final_balance, 0) AS final_balance,
     rag.currency_id AS currency_id,
     coalesce(rag.initial_balance_foreign_currency, 0)
@@ -278,9 +308,6 @@ FROM
 WHERE
     acc.id in %s
         """
-        if self.hide_account_balance_at_0:
-            query_inject_account += """ AND
-    final_balance IS NOT NULL AND final_balance != 0"""
         query_inject_account_params = (
             self.id,
             self.env.uid,
@@ -304,6 +331,7 @@ INSERT INTO
     initial_balance_foreign_currency,
     debit,
     credit,
+    period_balance,
     final_balance,
     final_balance_foreign_currency
     )
@@ -317,6 +345,7 @@ SELECT
     rpg.initial_balance_foreign_currency AS initial_balance_foreign_currency,
     rpg.final_debit - rpg.initial_debit AS debit,
     rpg.final_credit - rpg.initial_credit AS credit,
+    rpg.final_balance - rpg.initial_balance AS period_balance,
     rpg.final_balance AS final_balance,
     rpg.final_balance_foreign_currency AS final_balance_foreign_currency
 FROM
@@ -377,7 +406,7 @@ FROM
 WITH computed AS (WITH RECURSIVE cte AS (
    SELECT account_group_id, code, account_group_id AS parent_id,
     initial_balance, initial_balance_foreign_currency, debit, credit,
-    final_balance, final_balance_foreign_currency
+    period_balance, final_balance, final_balance_foreign_currency
    FROM   report_trial_balance_account
    WHERE report_id = %s
    GROUP BY report_trial_balance_account.id
@@ -385,7 +414,7 @@ WITH computed AS (WITH RECURSIVE cte AS (
    UNION  ALL
    SELECT c.account_group_id, c.code, p.account_group_id,
     p.initial_balance, p.initial_balance_foreign_currency, p.debit, p.credit,
-    p.final_balance, p.final_balance_foreign_currency
+    p.period_balance, p.final_balance, p.final_balance_foreign_currency
    FROM   cte c
    JOIN   report_trial_balance_account p USING (parent_id)
     WHERE p.report_id = %s
@@ -395,6 +424,7 @@ SELECT account_group_id, code,
     sum(initial_balance_foreign_currency) AS initial_balance_foreign_currency,
     sum(debit) AS debit,
     sum(credit) AS credit,
+    sum(debit) - sum(credit) AS period_balance,
     sum(final_balance) AS final_balance,
     sum(final_balance_foreign_currency) AS final_balance_foreign_currency
 FROM   cte
@@ -407,6 +437,7 @@ SET initial_balance = computed.initial_balance,
         computed.initial_balance_foreign_currency,
     debit = computed.debit,
     credit = computed.credit,
+    period_balance = computed.period_balance,
     final_balance = computed.final_balance,
     final_balance_foreign_currency =
         computed.final_balance_foreign_currency
@@ -470,6 +501,7 @@ WITH RECURSIVE accgroup AS
         as initial_balance_foreign_currency,
     sum(coalesce(ra.debit, 0)) as debit,
     sum(coalesce(ra.credit, 0)) as credit,
+    sum(coalesce(ra.debit, 0)) - sum(coalesce(ra.credit, 0)) as period_balance,
     sum(coalesce(ra.final_balance, 0)) as final_balance,
     sum(coalesce(ra.final_balance_foreign_currency, 0))
         as final_balance_foreign_currency
@@ -488,6 +520,7 @@ SET initial_balance = accgroup.initial_balance,
         accgroup.initial_balance_foreign_currency,
     debit = accgroup.debit,
     credit = accgroup.credit,
+    period_balance = accgroup.period_balance,
     final_balance = accgroup.final_balance,
     final_balance_foreign_currency =
         accgroup.final_balance_foreign_currency
