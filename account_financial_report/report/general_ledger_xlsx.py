@@ -11,8 +11,9 @@ class GeneralLedgerXslx(models.AbstractModel):
     _name = 'report.a_f_r.report_general_ledger_xlsx'
     _inherit = 'report.account_financial_report.abstract_report_xlsx'
 
-    def _get_report_name(self):
-        return _('General Ledger')
+    def _get_report_name(self, report):
+        report_name = _('General Ledger')
+        return self._get_report_complete_name(report, report_name)
 
     def _get_report_columns(self, report):
         res = {

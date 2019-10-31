@@ -3,6 +3,7 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
 from odoo import models, fields, api
+from odoo.tools import float_is_zero
 
 
 class TrialBalanceReport(models.TransientModel):
@@ -47,6 +48,8 @@ class TrialBalanceReport(models.TransientModel):
     limit_hierarchy_level = fields.Boolean('Limit hierarchy levels')
     show_hierarchy_level = fields.Integer('Hierarchy Levels to display',
                                           default=1)
+    hide_parent_hierarchy_level = fields.Boolean(
+        'Do not display parent levels', default=False)
     # General Ledger Report Data fields,
     # used as base for compute the data reports
     general_ledger_id = fields.Many2one(
@@ -114,20 +117,37 @@ class TrialBalanceReportAccount(models.TransientModel):
         inverse_name='report_account_id'
     )
 
-    @api.multi
+    @api.depends(
+        'currency_id',
+        'report_id',
+        'report_id.hide_account_at_0',
+        'report_id.limit_hierarchy_level',
+        'report_id.show_hierarchy_level',
+        'initial_balance',
+        'final_balance',
+        'debit',
+        'credit',
+    )
     def _compute_hide_line(self):
         for rec in self:
             report = rec.report_id
-            rec.hide_line = False
+            r = (rec.currency_id or report.company_id.currency_id).rounding
             if report.hide_account_at_0 and (
-                    not rec.initial_balance and
-                    not rec.final_balance and
-                    not rec.debit and
-                    not rec.credit):
+                    float_is_zero(rec.initial_balance, precision_rounding=r)
+                    and float_is_zero(rec.final_balance, precision_rounding=r)
+                    and float_is_zero(rec.debit, precision_rounding=r)
+                    and float_is_zero(rec.credit, precision_rounding=r)):
                 rec.hide_line = True
-            elif report.limit_hierarchy_level and \
-                    rec.level > report.show_hierarchy_level:
-                rec.hide_line = True
+            elif report.limit_hierarchy_level and report.show_hierarchy_level:
+                if report.hide_parent_hierarchy_level:
+                    distinct_level = rec.level != report.show_hierarchy_level
+                    if rec.account_group_id and distinct_level:
+                        rec.hide_line = True
+                    elif rec.level and distinct_level:
+                        rec.hide_line = True
+                elif not report.hide_parent_hierarchy_level and \
+                        rec.level > report.show_hierarchy_level:
+                    rec.hide_line = True
 
 
 class TrialBalanceReportPartner(models.TransientModel):
@@ -213,7 +233,8 @@ class TrialBalanceReportCompute(models.TransientModel):
             'date_from': self.date_from,
             'date_to': self.date_to,
             'only_posted_moves': self.only_posted_moves,
-            'hide_account_at_0': self.hide_account_at_0,
+            # This is postprocessed later with a computed field
+            'hide_account_at_0': False,
             'foreign_currency': self.foreign_currency,
             'company_id': self.company_id.id,
             'filter_account_ids': [(6, 0, account_ids.ids)],
@@ -551,7 +572,7 @@ WHERE newline.account_group_id = report_trial_balance_account.parent_id
         groups = self.account_ids.filtered(
             lambda a: a.account_group_id is not False)
         for group in groups:
-            if self.hierarchy_on == 'compute':
+            if self.hierarchy_on == 'computed':
                 group.compute_account_ids = \
                     group.account_group_id.compute_account_ids
             else:

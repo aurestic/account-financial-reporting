@@ -7,9 +7,11 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
 
-from odoo import api, fields, models
+from odoo import api, fields, models, _
 from odoo.tools.safe_eval import safe_eval
 from odoo.tools import pycompat
+from odoo.exceptions import ValidationError
+import time
 
 
 class GeneralLedgerReportWizard(models.TransientModel):
@@ -21,14 +23,17 @@ class GeneralLedgerReportWizard(models.TransientModel):
     company_id = fields.Many2one(
         comodel_name='res.company',
         default=lambda self: self.env.user.company_id,
+        required=False,
         string='Company'
     )
     date_range_id = fields.Many2one(
         comodel_name='date.range',
         string='Date range'
     )
-    date_from = fields.Date(required=True)
-    date_to = fields.Date(required=True)
+    date_from = fields.Date(required=True,
+                            default=lambda self: self._init_date_from())
+    date_to = fields.Date(required=True,
+                          default=fields.Date.context_today)
     fy_start_date = fields.Date(compute='_compute_fy_start_date')
     target_move = fields.Selection([('posted', 'All Posted Entries'),
                                     ('all', 'All Entries')],
@@ -56,6 +61,7 @@ class GeneralLedgerReportWizard(models.TransientModel):
     partner_ids = fields.Many2many(
         comodel_name='res.partner',
         string='Filter partners',
+        default=lambda self: self._default_partners(),
     )
     analytic_tag_ids = fields.Many2many(
         comodel_name='account.analytic.tag',
@@ -78,8 +84,37 @@ class GeneralLedgerReportWizard(models.TransientModel):
         string='Show foreign currency',
         help='Display foreign currency for move lines, unless '
              'account currency is not setup through chart of accounts '
-             'will display initial and final balance in that currency.'
+             'will display initial and final balance in that currency.',
+        default=lambda self: self._default_foreign_currency(),
     )
+
+    def _init_date_from(self):
+        """set start date to begin of current year if fiscal year running"""
+        today = fields.Date.context_today(self)
+        cur_month = fields.Date.from_string(today).month
+        cur_day = fields.Date.from_string(today).day
+        last_fsc_month = self.env.user.company_id.fiscalyear_last_month
+        last_fsc_day = self.env.user.company_id.fiscalyear_last_day
+
+        if cur_month < last_fsc_month \
+                or cur_month == last_fsc_month and cur_day <= last_fsc_day:
+            return time.strftime('%Y-01-01')
+
+    def _default_foreign_currency(self):
+        return self.env.user.has_group('base.group_multi_currency')
+
+    def _default_partners(self):
+        context = self.env.context
+
+        if context.get('active_ids') and context.get('active_model') \
+                == 'res.partner':
+            partner_ids = context['active_ids']
+            corp_partners = self.env['res.partner'].browse(partner_ids). \
+                filtered(lambda p: p.parent_id)
+
+            partner_ids = set(partner_ids) - set(corp_partners.ids)
+            partner_ids |= set(corp_partners.mapped('parent_id.id'))
+            return list(partner_ids)
 
     @api.depends('date_from')
     def _compute_fy_start_date(self):
@@ -98,18 +133,74 @@ class GeneralLedgerReportWizard(models.TransientModel):
                 ('company_id', '=', self.company_id.id)
             ])
         self.not_only_one_unaffected_earnings_account = count != 1
+        if self.company_id and self.date_range_id.company_id and \
+                self.date_range_id.company_id != self.company_id:
+            self.date_range_id = False
+        if self.company_id and self.account_journal_ids:
+            self.account_journal_ids = self.account_journal_ids.filtered(
+                lambda p: p.company_id == self.company_id or
+                not p.company_id)
+        if self.company_id and self.partner_ids:
+            self.partner_ids = self.partner_ids.filtered(
+                lambda p: p.company_id == self.company_id or
+                not p.company_id)
+        if self.company_id and self.account_ids:
+            if self.receivable_accounts_only or self.payable_accounts_only:
+                self.onchange_type_accounts_only()
+            else:
+                self.account_ids = self.account_ids.filtered(
+                    lambda a: a.company_id == self.company_id)
+        if self.company_id and self.cost_center_ids:
+            self.cost_center_ids = self.cost_center_ids.filtered(
+                lambda c: c.company_id == self.company_id)
+        res = {'domain': {'account_ids': [],
+                          'partner_ids': [],
+                          'account_journal_ids': [],
+                          'cost_center_ids': [],
+                          'date_range_id': []
+                          }
+               }
+        if not self.company_id:
+            return res
+        else:
+            res['domain']['account_ids'] += [
+                ('company_id', '=', self.company_id.id)]
+            res['domain']['account_journal_ids'] += [
+                ('company_id', '=', self.company_id.id)]
+            res['domain']['partner_ids'] += [
+                '&',
+                '|', ('company_id', '=', self.company_id.id),
+                ('company_id', '=', False),
+                ('parent_id', '=', False)]
+            res['domain']['cost_center_ids'] += [
+                ('company_id', '=', self.company_id.id)]
+            res['domain']['date_range_id'] += [
+                '|', ('company_id', '=', self.company_id.id),
+                ('company_id', '=', False)]
+        return res
 
     @api.onchange('date_range_id')
     def onchange_date_range_id(self):
         """Handle date range change."""
-        self.date_from = self.date_range_id.date_start
-        self.date_to = self.date_range_id.date_end
+        if self.date_range_id:
+            self.date_from = self.date_range_id.date_start
+            self.date_to = self.date_range_id.date_end
+
+    @api.multi
+    @api.constrains('company_id', 'date_range_id')
+    def _check_company_id_date_range_id(self):
+        for rec in self.sudo():
+            if rec.company_id and rec.date_range_id.company_id and\
+                    rec.company_id != rec.date_range_id.company_id:
+                raise ValidationError(
+                    _('The Company in the General Ledger Report Wizard and in '
+                      'Date Range must be the same.'))
 
     @api.onchange('receivable_accounts_only', 'payable_accounts_only')
     def onchange_type_accounts_only(self):
         """Handle receivable/payable accounts only change."""
         if self.receivable_accounts_only or self.payable_accounts_only:
-            domain = []
+            domain = [('company_id', '=', self.company_id.id)]
             if self.receivable_accounts_only and self.payable_accounts_only:
                 domain += [('internal_type', 'in', ('receivable', 'payable'))]
             elif self.receivable_accounts_only:

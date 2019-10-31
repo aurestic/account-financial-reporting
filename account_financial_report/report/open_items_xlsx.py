@@ -9,8 +9,9 @@ class OpenItemsXslx(models.AbstractModel):
     _name = 'report.a_f_r.report_open_items_xlsx'
     _inherit = 'report.account_financial_report.abstract_report_xlsx'
 
-    def _get_report_name(self):
-        return _('Open Items')
+    def _get_report_name(self, report):
+        report_name = _('Open Items')
+        return self._get_report_complete_name(report, report_name)
 
     def _get_report_columns(self, report):
         res = {

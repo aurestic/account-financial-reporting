@@ -41,7 +41,7 @@ class AbstractReportXslx(models.AbstractModel):
 
         self._define_formats(workbook)
 
-        report_name = self._get_report_name()
+        report_name = self._get_report_name(report)
         report_footer = self._get_report_footer()
         filters = self._get_report_filters(report)
         self.columns = self._get_report_columns(report)
@@ -349,7 +349,14 @@ class AbstractReportXslx(models.AbstractModel):
         """
         raise NotImplementedError()
 
-    def _get_report_name(self):
+    def _get_report_complete_name(self, report, prefix):
+        if report.company_id:
+            suffix = ' - %s - %s' % (
+                report.company_id.name, report.company_id.currency_id.name)
+            return prefix + suffix
+        return prefix
+
+    def _get_report_name(self, report):
         """
             Allow to define the report name.
             Report name will be used as sheet name and as report title.

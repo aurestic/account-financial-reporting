@@ -42,6 +42,9 @@ currency used in account move lines is properly shown.
 In case that in an account has not been configured a second currency foreign
 currency balances are not available.
 
+To add several accounts by selecting all of them, install the module
+web_widget_many2many_tags_multi_selection.
+
 **Table of contents**
 
 .. contents::
@@ -49,6 +52,19 @@ currency balances are not available.
 
 Changelog
 =========
+
+11.0.2.5.0 (2019-04-26)
+~~~~~~~~~~~~~~~~~~~~~~~
+
+* In the Trial Balance you have an option to hide parent hierarchy levels
+
+11.0.2.4.1 (2019-01-08)
+~~~~~~~~~~~~~~~~~~~~~~~
+
+* Handle better multicompany behaviour
+* Improve how title appears in the reports
+* Improve performance in General Ledger
+
 
 11.0.2.3.1 (2018-11-29)
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -97,6 +113,12 @@ Contributors
 * Akim Juillerat <akim.juillerat@camptocamp.com>
 * Alexis de Lattre <alexis@via.ecp.fr>
 * Mihai Fekete <feketemihai@gmail.com>
+* Miquel Raïch <miquel.raich@eficent.com>
+* Isaac Gallart <igallart@puntsistemes.com>
+* `Tecnativa <https://www.tecnativa.com>`__:
+
+  * Pedro M. Baeza
+  * Sergio Teruel
 
 Much of the work in this module was done at a sprint in Sorrento, Italy in
 April 2016.

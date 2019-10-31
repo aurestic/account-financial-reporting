@@ -254,7 +254,6 @@ class GeneralLedgerReportCompute(models.TransientModel):
             self._inject_partner_values()
             if not self.filter_partner_ids:
                 self._inject_partner_values(only_empty_partner=True)
-
         # Add unaffected earnings account
         if (not self.filter_account_ids or
                 self.unaffected_earnings_account.id in
@@ -1620,7 +1619,7 @@ WITH move_lines_on_tags AS
         if self.filter_cost_center_ids:
             query_select_previous_fy_unaffected_earnings += """
                 INNER JOIN account_analytic_account aa
-                ON aml.analytic_account_id = aa.id
+                ON ml.analytic_account_id = aa.id
                 AND aa.id IN %(cost_center_ids)s
             """
             query_select_previous_fy_unaffected_earnings_params[
@@ -1676,7 +1675,7 @@ WITH move_lines_on_tags AS
         if self.filter_cost_center_ids:
             query_select_period_unaffected_earnings += """
                 INNER JOIN account_analytic_account aa
-                ON aml.analytic_account_id = aa.id
+                ON ml.analytic_account_id = aa.id
                 AND aa.id IN %(cost_center_ids)s
             """
             query_select_period_unaffected_earnings_params[
