@@ -183,7 +183,6 @@ msgstr ""
 #: code:addons/account_financial_report/report/aged_partner_balance_xlsx.py:50
 #: code:addons/account_financial_report/report/aged_partner_balance_xlsx.py:105
 #, fuzzy, python-format
-#| msgid "Age â¤ 120 d."
 msgid "Age ≤ 120 d."
 msgstr "Alter bis 120 T."
 
@@ -200,7 +199,6 @@ msgstr ""
 #: code:addons/account_financial_report/report/aged_partner_balance_xlsx.py:32
 #: code:addons/account_financial_report/report/aged_partner_balance_xlsx.py:84
 #, fuzzy, python-format
-#| msgid "Age â¤ 30 d."
 msgid "Age ≤ 30 d."
 msgstr "Alter bis 30 T."
 
@@ -217,7 +215,6 @@ msgstr ""
 #: code:addons/account_financial_report/report/aged_partner_balance_xlsx.py:38
 #: code:addons/account_financial_report/report/aged_partner_balance_xlsx.py:91
 #, fuzzy, python-format
-#| msgid "Age â¤ 60 d."
 msgid "Age ≤ 60 d."
 msgstr "Alter bis 60 T."
 
@@ -234,7 +231,6 @@ msgstr ""
 #: code:addons/account_financial_report/report/aged_partner_balance_xlsx.py:44
 #: code:addons/account_financial_report/report/aged_partner_balance_xlsx.py:98
 #, fuzzy, python-format
-#| msgid "Age â¤ 90 d."
 msgid "Age ≤ 90 d."
 msgstr "Alter bis 90 T."
 
@@ -948,7 +944,7 @@ msgid ""
 msgstr "Endstand"
 
 #. module: account_financial_report
-#: code:addons/account_financial_report/report/general_ledger_xlsx.py:180
+#: code:addons/account_financial_report/report/general_ledger_xlsx.py:181
 #: code:addons/account_financial_report/report/open_items_xlsx.py:118
 #: code:addons/account_financial_report/report/trial_balance_xlsx.py:38
 #: code:addons/account_financial_report/report/trial_balance_xlsx.py:53
@@ -1349,7 +1345,7 @@ msgid "Initial Debit"
 msgstr "Anfangssoll"
 
 #. module: account_financial_report
-#: code:addons/account_financial_report/report/general_ledger_xlsx.py:168
+#: code:addons/account_financial_report/report/general_ledger_xlsx.py:169
 #: code:addons/account_financial_report/report/trial_balance_xlsx.py:22
 #: code:addons/account_financial_report/report/trial_balance_xlsx.py:49
 #: code:addons/account_financial_report/report/trial_balance_xlsx.py:63
@@ -1737,7 +1733,6 @@ msgstr "Offene Posten -"
 #. module: account_financial_report
 #: model:ir.actions.act_window,name:account_financial_report.act_action_open_items_wizard_partner_relation
 #, fuzzy
-#| msgid "Open Items -"
 msgid "Open Items Partner"
 msgstr "Offene Posten -"
 
@@ -1809,7 +1804,7 @@ msgstr ""
 "                    kumm.  Stichtagssalden"
 
 #. module: account_financial_report
-#: code:addons/account_financial_report/report/general_ledger_xlsx.py:165
+#: code:addons/account_financial_report/report/general_ledger_xlsx.py:166
 #, python-format
 msgid "Partner Initial balance"
 msgstr "Partner-Anfangssaldo"
@@ -1821,7 +1816,7 @@ msgid "Partner cumul aged balance"
 msgstr "Partner-Salden nach Alter"
 
 #. module: account_financial_report
-#: code:addons/account_financial_report/report/general_ledger_xlsx.py:177
+#: code:addons/account_financial_report/report/general_ledger_xlsx.py:178
 #: code:addons/account_financial_report/report/open_items_xlsx.py:114
 #: model:ir.ui.view,arch_db:account_financial_report.report_general_ledger_ending_cumul
 #: model:ir.ui.view,arch_db:account_financial_report.report_open_items_ending_cumul
