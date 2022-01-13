@@ -331,6 +331,14 @@ class GeneralLedgerReportCompute(models.TransientModel):
                 AND at.include_initial_balance = TRUE
             """
 
+        if self.filter_journal_ids:
+            sub_subquery_sum_amounts += """
+            AND
+                ml.journal_id IN (%s)
+            """ % ', '.join(
+                map(str, self.filter_journal_ids.ids)
+                )
+
         if self.only_posted_moves:
             sub_subquery_sum_amounts += """
         INNER JOIN
@@ -408,7 +416,8 @@ WITH
         if (
             self.filter_partner_ids or
             self.filter_cost_center_ids or
-            self.filter_analytic_tag_ids
+            self.filter_analytic_tag_ids or
+            self.filter_journal_ids
         ):
             query_inject_account += """
             INNER JOIN
@@ -418,6 +427,11 @@ WITH
             query_inject_account += """
             INNER JOIN
                 res_partner p ON ml.partner_id = p.id
+            """
+        if self.filter_journal_ids:
+            query_inject_account += """
+                INNER JOIN
+                account_journal j ON ml.journal_id = j.id
             """
         if self.filter_cost_center_ids:
             query_inject_account += """
@@ -453,10 +467,16 @@ WITH
             AND
                 p.id IN %s
             """
+        if self.filter_journal_ids:
+            query_inject_account += """
+            AND
+                j.id IN %s
+            """
         if (
                 self.filter_partner_ids or
                 self.filter_cost_center_ids or
-                self.filter_analytic_tag_ids
+                self.filter_analytic_tag_ids or
+                self.filter_journal_ids
         ):
             query_inject_account += """
             GROUP BY
@@ -579,6 +599,10 @@ AND
             query_inject_account_params += (
                 tuple(self.filter_partner_ids.ids),
             )
+        if self.filter_journal_ids:
+            query_inject_account_params += (
+                tuple(self.filter_journal_ids.ids),
+            )
         if self.filter_analytic_tag_ids:
             query_inject_account_params += (
                 tuple(self.filter_analytic_tag_ids.ids),
@@ -670,6 +694,14 @@ AND
             sub_subquery_sum_amounts += """
                     AND ap.include_initial_balance = TRUE
             """
+        if self.filter_journal_ids:
+            sub_subquery_sum_amounts += """
+            AND
+                ml.journal_id IN (%s)
+            """ % ', '.join(
+                map(str, self.filter_journal_ids.ids)
+                )
+
         if self.only_posted_moves:
             sub_subquery_sum_amounts += """
             INNER JOIN
@@ -813,6 +845,11 @@ WITH
             AND
                 p.id IN %s
             """
+        if self.filter_journal_ids:
+            query_inject_partner += """
+            AND
+                ml.journal_id IN %s
+            """
 
         init_subquery = self._get_final_partner_sub_subquery_sum_amounts(
             only_empty_partner,
@@ -954,6 +991,10 @@ AND
         if self.filter_partner_ids:
             query_inject_partner_params += (
                 tuple(self.filter_partner_ids.ids),
+            )
+        if self.filter_journal_ids:
+            query_inject_partner_params += (
+                tuple(self.filter_journal_ids.ids),
             )
         if self.filter_analytic_tag_ids:
             query_inject_partner_params += (
@@ -1224,7 +1265,7 @@ LEFT JOIN
     account_analytic_account aa ON ml.analytic_account_id = aa.id
             """
         if self.filter_analytic_tag_ids:
-                query_inject_move_line += """
+            query_inject_move_line += """
         INNER JOIN
             move_lines_on_tags ON ml.id = move_lines_on_tags.ml_id
                     """
