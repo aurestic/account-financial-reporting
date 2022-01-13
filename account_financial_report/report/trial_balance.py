@@ -62,6 +62,13 @@ class TrialBalanceReport(models.TransientModel):
         inverse_name='report_id'
     )
 
+    @api.model
+    def get_extra_domain(self, domain):
+        if self.filter_journal_ids:
+            domain.extend(
+                [('journal_id', 'in', self.filter_journal_ids.ids)])
+        return domain
+
 
 class TrialBalanceReportAccount(models.TransientModel):
     _name = 'report_trial_balance_account'
